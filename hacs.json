@@ -1,0 +1,6 @@
+{
+  "name": "Broadlink CustomRemote",
+  "render_readme": true,
+  "category": "integration",
+  "homeassistant": "2026.1.3"
+}
