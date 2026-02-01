@@ -1,0 +1,9 @@
+{
+  "domain": "broadlink_customremote",
+  "name": "Broadlink Custom Remote",
+  "config_flow": true,
+  "documentation": "https://github.com/kamil-michalski/Broadlink_CustomRemote",
+  "dependencies": ["broadlink"],
+  "codeowners": ["@kamil-michalski"],
+  "version": "0.0.1"
+}
