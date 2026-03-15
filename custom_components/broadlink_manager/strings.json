@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "BroadLink Manager",
+        "description": "Konfiguracja menedżera komend BroadLink",
+        "data": {
+          "config_path": "Ścieżka do katalogu konfiguracji HA"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie można połączyć się z urządzeniem",
+      "invalid_path": "Nieprawidłowa ścieżka do pliku",
+      "unknown": "Nieznany błąd"
+    },
+    "abort": {
+      "already_configured": "Integracja już skonfigurowana"
+    }
+  }
+}
