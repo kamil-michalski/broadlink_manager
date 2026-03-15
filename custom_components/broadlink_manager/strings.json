@@ -3,19 +3,26 @@
     "step": {
       "user": {
         "title": "BroadLink Manager",
-        "description": "Konfiguracja menedżera komend BroadLink",
+        "description": "Konfiguracja menedżera komend BroadLink. Integracja automatycznie wczyta wszystkie nauczone komendy jako encje.",
         "data": {
-          "config_path": "Ścieżka do katalogu konfiguracji HA"
+          "config_path": "Ścieżka do katalogu .storage"
         }
       }
     },
     "error": {
       "cannot_connect": "Nie można połączyć się z urządzeniem",
-      "invalid_path": "Nieprawidłowa ścieżka do pliku",
+      "invalid_path": "Nieprawidłowa ścieżka — katalog nie istnieje",
       "unknown": "Nieznany błąd"
     },
     "abort": {
       "already_configured": "Integracja już skonfigurowana"
+    }
+  },
+  "entity": {
+    "button": {
+      "broadlink_command": {
+        "name": "Komenda IR"
+      }
     }
   }
 }

@@ -32,8 +32,13 @@ def mac_from_filename(filepath: str) -> str:
 def read_codes(filepath: str) -> dict:
     """Read BroadLink codes from HA .storage file.
 
-    Pliki .storage mają opakowanie HA:
-      {"version": 1, "data": {"TV": {"power": "JgB..."}}}
+    Pliki .storage mają format:
+      {
+        "version": 1,
+        "minor_version": 1,
+        "key": "broadlink_remote_XXXX_codes",
+        "data": {"TV": {"power": "JgB..."}}
+      }
     Zwracamy tylko klucz "data".
     """
     try:
@@ -50,7 +55,7 @@ def read_codes(filepath: str) -> dict:
 def write_codes(filepath: str, codes: dict) -> bool:
     """Write BroadLink codes back to HA .storage file.
 
-    Zachowujemy oryginalne opakowanie HA Storage (version, key, itp.)
+    Zachowujemy wszystkie metadane HA Storage (version, minor_version, key)
     i nadpisujemy tylko klucz "data".
     """
     try:

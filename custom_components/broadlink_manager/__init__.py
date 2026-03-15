@@ -21,7 +21,7 @@ from . import store
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS = []
+PLATFORMS = ["button"]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -154,11 +154,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     _LOGGER.info("BroadLink Manager integration loaded (config path: %s)", config_path)
+
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+
     for service in [
         "list_devices",
         SERVICE_DELETE_COMMAND,
@@ -169,4 +173,4 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_remove(DOMAIN, service)
 
     hass.data[DOMAIN].pop(entry.entry_id)
-    return True
+    return unload_ok
