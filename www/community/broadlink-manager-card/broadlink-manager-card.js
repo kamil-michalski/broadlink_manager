@@ -513,5 +513,5 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'broadlink-manager-card',
   name: 'BroadLink Manager',
-  description: 'Zarządzaj i ucz komend IR/RF BroadLink',
+  description: 'Zarządzaj komendami IR/RF BroadLink',
 });
