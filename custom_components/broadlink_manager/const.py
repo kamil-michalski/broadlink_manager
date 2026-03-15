@@ -2,9 +2,11 @@
 
 DOMAIN = "broadlink_manager"
 CONF_CONFIG_PATH = "config_path"
-DEFAULT_CONFIG_PATH = "/config"
+DEFAULT_CONFIG_PATH = "/config/.storage"
 
-BROADLINK_FILE_PATTERN = "broadlink_remote_*_codes.json"
+# Pliki w .storage nie mają rozszerzenia .json
+# Filtrujemy tylko *_codes, pomijamy *_flags i inne
+BROADLINK_FILE_PATTERN = "broadlink_remote_*_codes"
 
 SERVICE_DELETE_COMMAND = "delete_command"
 SERVICE_RENAME_COMMAND = "rename_command"

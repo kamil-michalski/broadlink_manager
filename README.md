@@ -18,6 +18,7 @@ Integracja do zarządzania nauczanymi komendami IR/RF z plików BroadLink (`broa
 
 ```
 /config/
+├── .storage/              ← tutaj są pliki BroadLink
 ├── custom_components/
 │   └── broadlink_manager/
 │       ├── __init__.py
@@ -45,7 +46,7 @@ lovelace:
 
 **Ustawienia → Urządzenia i usługi → Dodaj integrację → BroadLink Manager**
 
-Podaj ścieżkę do katalogu konfiguracji (domyślnie `/config`).
+Podaj ścieżkę do katalogu `.storage` (domyślnie `/config/.storage`).
 
 ### 4. Dodaj kartę do dashboardu
 
@@ -125,4 +126,4 @@ Integracja odczytuje pliki w formacie:
 }
 ```
 
-Plik: `/config/broadlink_remote_aabbccddeeff_codes.json`
+Plik: `/config/.storage/broadlink_remote_aabbccddeeff_codes`

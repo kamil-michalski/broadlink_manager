@@ -17,9 +17,12 @@ def get_broadlink_files(config_path: str) -> list[str]:
 
 
 def mac_from_filename(filepath: str) -> str:
-    """Extract MAC address from filename."""
+    """Extract MAC address from filename.
+
+    Pliki w .storage: broadlink_remote_e87072abde0a_codes (bez .json)
+    """
     basename = os.path.basename(filepath)
-    match = re.search(r"broadlink_remote_([a-f0-9]+)_codes\.json", basename)
+    match = re.search(r"broadlink_remote_([a-f0-9]+)_codes$", basename)
     if match:
         raw = match.group(1)
         return ":".join(raw[i:i+2] for i in range(0, len(raw), 2)).upper()
@@ -27,20 +30,44 @@ def mac_from_filename(filepath: str) -> str:
 
 
 def read_codes(filepath: str) -> dict:
-    """Read BroadLink codes from file."""
+    """Read BroadLink codes from HA .storage file.
+
+    Pliki .storage mają opakowanie HA:
+      {"version": 1, "data": {"TV": {"power": "JgB..."}}}
+    Zwracamy tylko klucz "data".
+    """
     try:
         with open(filepath, "r", encoding="utf-8") as f:
-            return json.load(f)
+            raw = json.load(f)
+        if isinstance(raw, dict) and "data" in raw:
+            return raw["data"]
+        return raw
     except (FileNotFoundError, json.JSONDecodeError) as err:
         _LOGGER.error("Cannot read BroadLink codes from %s: %s", filepath, err)
         return {}
 
 
 def write_codes(filepath: str, codes: dict) -> bool:
-    """Write BroadLink codes to file."""
+    """Write BroadLink codes back to HA .storage file.
+
+    Zachowujemy oryginalne opakowanie HA Storage (version, key, itp.)
+    i nadpisujemy tylko klucz "data".
+    """
     try:
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                raw = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            raw = {}
+
+        if isinstance(raw, dict) and "data" in raw:
+            raw["data"] = codes
+            payload = raw
+        else:
+            payload = codes
+
         with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(codes, f, indent=2, ensure_ascii=False)
+            json.dump(payload, f, indent=2, ensure_ascii=False)
         return True
     except OSError as err:
         _LOGGER.error("Cannot write BroadLink codes to %s: %s", filepath, err)
