@@ -161,44 +161,63 @@ class BroadlinkCommandButton(ButtonEntity):
         return "mdi:remote"
 
     async def async_press(self) -> None:
-        """Wyślij komendę przez istniejącą integrację BroadLink w HA."""
+        """Wyślij komendę przez remote.send_command — HA sam obsługuje kod."""
         _LOGGER.debug(
-            "Sending command '%s' for device '%s' (MAC: %s)",
+            "Sending command '%s' for device '%s' via remote entity (MAC: %s)",
             self._command,
             self._device_name,
             self._mac,
         )
+
+        # Znajdź encję remote.* skojarzoną z tym pilotem BroadLink
+        remote_entity_id = self._find_remote_entity()
+        if not remote_entity_id:
+            _LOGGER.error(
+                "Nie znaleziono encji remote.* dla MAC %s — "
+                "upewnij się że integracja BroadLink jest skonfigurowana",
+                self._mac,
+            )
+            return
+
         try:
+            # remote.send_command przyjmuje device (nazwa urządzenia z BroadLink)
+            # i command (nazwa komendy nauczonej przez remote.learn_command)
             await self.hass.services.async_call(
-                "broadlink",
-                "send",
+                "remote",
+                "send_command",
                 {
-                    "mac": self._mac,
-                    "command": [f"b64:{self._get_code()}"],
+                    "entity_id": remote_entity_id,
+                    "device": self._device_name,
+                    "command": self._command,
                 },
                 blocking=True,
             )
         except Exception as err:
             _LOGGER.error(
-                "Błąd wysyłania komendy '%s': %s", self._command, err
+                "Błąd wysyłania komendy '%s/%s': %s",
+                self._device_name, self._command, err,
             )
 
-    def _get_code(self) -> str:
-        """Odczytaj surowy kod IR z pliku."""
-        remotes = store.list_devices(self._config_path)
-        for remote in remotes:
-            if remote["mac"] == self._mac:
-                for device in remote["devices"]:
-                    if device["name"] == self._device_name:
-                        # Odczytaj bezpośrednio z pliku żeby mieć pełne kody
-                        break
-        # Odczytaj plik bezpośrednio
-        import glob, os
-        from .const import BROADLINK_FILE_PATTERN
-        pattern = os.path.join(self._config_path, BROADLINK_FILE_PATTERN)
-        for filepath in glob.glob(pattern):
-            mac_from_file = store.mac_from_filename(filepath)
-            if mac_from_file == self._mac:
-                codes = store.read_codes(filepath)
-                return codes.get(self._device_name, {}).get(self._command, "")
-        return ""
+    def _find_remote_entity(self) -> str | None:
+        """Znajdź entity_id encji remote.* pasującej do MAC adresu pilota."""
+        mac_plain = self._mac.replace(":", "").lower()
+        mac_colons = self._mac.lower()
+
+        from homeassistant.helpers import entity_registry as er
+        ent_reg = er.async_get(self.hass)
+
+        for entity in ent_reg.entities.values():
+            if entity.domain != "remote":
+                continue
+            # HA tworzy encję remote z unique_id zawierającym MAC
+            uid = (entity.unique_id or "").lower()
+            if mac_plain in uid or mac_colons in uid:
+                return entity.entity_id
+
+        # Fallback: szukaj po nazwie encji (np. remote.broadlink_rm4_e87072...)
+        states = self.hass.states.async_all("remote")
+        for state in states:
+            if mac_plain in state.entity_id or mac_colons in state.entity_id:
+                return state.entity_id
+
+        return None
