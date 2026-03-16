@@ -306,7 +306,7 @@ class BroadlinkManagerCard extends HTMLElement {
     if (m.type === 'add_device' || m.type === 'add_command') {
       const remotes = this._getRemoteEntities();
       const isNewDevice = m.type === 'add_device';
-      const title = isNewDevice ? '➕ Nowe urządzenie' : `➕ Nowa komenda — ${m.device}`;
+      const title = isNewDevice ? '+ Nowe urządzenie' : `+ Nowa komenda — ${m.device}`;
       const btnLabel = this._learning ? '⏳ CZEKAM...' : '📡 UCZE';
       return `
         <div class="modal-overlay">
@@ -372,7 +372,7 @@ class BroadlinkManagerCard extends HTMLElement {
                     <div class="command-chip add-chip"
                       data-action="add_command"
                       data-mac="${remote.mac}"
-                      data-device="${dev.name}">＋ nowa komenda</div>
+                      data-device="${dev.name}">+ nowa komenda</div>
                   </div>` : '';
                 return `
                   <div class="device-block">
@@ -391,7 +391,7 @@ class BroadlinkManagerCard extends HTMLElement {
                             data-action="add_command"
                             data-mac="${remote.mac}"
                             data-device="${dev.name}"
-                            title="Dodaj komendę">＋</button>
+                            title="Dodaj komendę">+</button>
                           <button class="icon-btn danger"
                             data-action="delete_device"
                             data-mac="${remote.mac}"
@@ -417,7 +417,7 @@ class BroadlinkManagerCard extends HTMLElement {
             <div class="remote-right">
               <button class="add-device-btn"
                 data-action="add_device"
-                data-mac="${remote.mac}">＋ urządzenie</button>
+                data-mac="${remote.mac}">+ urządzenie</button>
               <span class="remote-chevron ${isOpen ? 'open' : ''}">▶</span>
             </div>
           </div>
