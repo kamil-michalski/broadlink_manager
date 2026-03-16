@@ -192,7 +192,13 @@ class BroadlinkManagerCard extends HTMLElement {
     }
   }
 
-  _getRemoteEntities() {
+  _getRemoteEntitiesForMac(mac) {
+    // Zwróć tylko encję remote.* skojarzoną z tym pilotem (z danych backendu)
+    const remote = this._data.find(r => r.mac === mac);
+    if (remote && remote.entity_id) {
+      return [{ entity_id: remote.entity_id, name: remote.friendly_name || remote.entity_id }];
+    }
+    // Fallback: wszystkie remote.* z HA states
     if (!this._hass) return [];
     return Object.keys(this._hass.states)
       .filter(id => id.startsWith('remote.'))
@@ -200,28 +206,7 @@ class BroadlinkManagerCard extends HTMLElement {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  _getMacToNameMap() {
-    // Buduje mapę MAC → przyjazna nazwa pilota z encji remote.*
-    // HA BroadLink tworzy encje remote z MAC w entity_id lub unique_id
-    const map = {};
-    if (!this._hass) return map;
 
-    Object.keys(this._hass.states)
-      .filter(id => id.startsWith('remote.'))
-      .forEach(id => {
-        const state = this._hass.states[id];
-        const name = state.attributes.friendly_name || id;
-        // Szukaj MAC w entity_id (np. remote.broadlink_rm4_e87072abde0a)
-        const macMatch = id.match(/([0-9a-f]{12})/i);
-        if (macMatch) {
-          const raw = macMatch[1].toLowerCase();
-          // Zamień na format AA:BB:CC:DD:EE:FF
-          const mac = raw.match(/.{2}/g).join(':').toUpperCase();
-          map[mac] = name;
-        }
-      });
-    return map;
-  }
 
   _showToast(msg, type = '') {
     const toast = this.shadowRoot.querySelector('.toast');
@@ -304,18 +289,20 @@ class BroadlinkManagerCard extends HTMLElement {
     }
 
     if (m.type === 'add_device' || m.type === 'add_command') {
-      const remotes = this._getRemoteEntities();
+      const remotes = this._getRemoteEntitiesForMac(m.mac);
       const isNewDevice = m.type === 'add_device';
       const title = isNewDevice ? '+ Nowe urządzenie' : `+ Nowa komenda — ${m.device}`;
       const btnLabel = this._learning ? '⏳ CZEKAM...' : '📡 UCZE';
+      // Jeśli jest dokładnie 1 pilot — auto-select
+      const autoSelected = remotes.length === 1 ? remotes[0].entity_id : '';
       return `
         <div class="modal-overlay">
           <div class="modal">
             <div class="modal-title">${title}</div>
             <div class="modal-label">Pilot BroadLink (remote.*)</div>
             <select class="modal-select" id="learn-remote">
-              <option value="">— wybierz pilota —</option>
-              ${remotes.map(r => `<option value="${r.entity_id}">${r.name}</option>`).join('')}
+              ${remotes.length !== 1 ? '<option value="">— wybierz pilota —</option>' : ''}
+              ${remotes.map(r => `<option value="${r.entity_id}" ${r.entity_id === autoSelected ? 'selected' : ''}>${r.name}</option>`).join('')}
             </select>
             ${isNewDevice ? `
               <div class="modal-label">Nazwa urządzenia</div>
@@ -339,12 +326,11 @@ class BroadlinkManagerCard extends HTMLElement {
     if (this._loading) return `<div class="loading"><span>Ładowanie danych...</span></div>`;
     if (!this._data.length) return `<div class="empty-state"><div class="icon">📡</div>Brak plików BroadLink w katalogu konfiguracji</div>`;
 
-    const macNameMap = this._getMacToNameMap();
-
     return this._data.map(remote => {
       const isOpen = this._openRemotes.has(remote.mac);
       const totalCmds = remote.devices.reduce((s, d) => s + d.command_count, 0);
-      const remoteName = macNameMap[remote.mac] || null;
+      // friendly_name i entity_id dostarcza backend
+      const remoteName = remote.friendly_name || null;
 
       const devicesHtml = isOpen ? `
         <div class="devices-container">

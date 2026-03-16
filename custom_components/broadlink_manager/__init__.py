@@ -62,6 +62,35 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # --- Service: list_devices ---
     async def handle_list_devices(call: ServiceCall) -> dict:
         devices = await hass.async_add_executor_job(store.list_devices, config_path)
+
+        # Wzbogać dane o entity_id i friendly_name encji remote.* dla każdego MAC
+        ent_reg = er.async_get(hass)
+        for remote in devices:
+            mac = remote["mac"]
+            mac_plain = mac.replace(":", "").lower()
+            remote["entity_id"] = None
+            remote["friendly_name"] = None
+
+            # Szukaj encji remote.* po unique_id zawierającym MAC
+            for entity in ent_reg.entities.values():
+                if entity.domain != "remote":
+                    continue
+                uid = (entity.unique_id or "").lower()
+                if mac_plain in uid:
+                    remote["entity_id"] = entity.entity_id
+                    state = hass.states.get(entity.entity_id)
+                    if state:
+                        remote["friendly_name"] = state.attributes.get("friendly_name") or entity.entity_id
+                    break
+
+            # Fallback: szukaj MAC w entity_id
+            if not remote["entity_id"]:
+                for state in hass.states.async_all("remote"):
+                    if mac_plain in state.entity_id:
+                        remote["entity_id"] = state.entity_id
+                        remote["friendly_name"] = state.attributes.get("friendly_name") or state.entity_id
+                        break
+
         _LOGGER.info("BroadLink devices listed: %s remotes found", len(devices))
         hass.bus.async_fire(f"{DOMAIN}_devices_listed", {"devices": devices})
         return {"devices": devices}
