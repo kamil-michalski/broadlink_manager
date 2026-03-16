@@ -1,7 +1,7 @@
 {
   "domain": "broadlink_manager",
   "name": "BroadLink Manager",
-  "version": "2026.3.8",
+  "version": "2026.3.9",
   "documentation": "https://github.com/kamil-michalski/broadlink_manager",
   "dependencies": ["broadlink"],
   "codeowners": ["@kamil-michalski"],

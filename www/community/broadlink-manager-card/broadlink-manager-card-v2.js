@@ -48,7 +48,7 @@ const styles = `
   .device-name-text { cursor: pointer; }
   .device-name-text:hover { color: var(--bl-accent); text-decoration: underline dotted; }
   .device-badge { font-size: 9px; background: rgba(0,212,255,0.1); color: var(--bl-accent); padding: 2px 6px; border-radius: 10px; letter-spacing: 1px; }
-  .device-actions { display: flex; gap: 4px; align-items: center; }
+  .device-actions { display: flex; gap: 6px; align-items: center; padding-left: 8px; border-left: 1px solid var(--bl-border); margin-left: 4px; }
   .icon-btn { background: transparent; border: 1px solid transparent; color: var(--bl-text-muted); width: 26px; height: 26px; border-radius: 5px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: all 0.2s; font-family: inherit; }
   .icon-btn:hover { border-color: var(--bl-border); color: var(--bl-text); }
   .icon-btn.danger:hover { border-color: var(--bl-danger); color: var(--bl-danger); }
@@ -357,18 +357,20 @@ class BroadlinkManagerCard extends HTMLElement {
                           title="Kliknij aby zmienić nazwę">${dev.name}</span>
                         <span class="device-badge">${dev.command_count} CMD</span>
                       </div>
-                      <div class="device-actions">
-                        <button class="icon-btn add"
-                          data-action="add_command"
-                          data-mac="${remote.mac}"
-                          data-device="${dev.name}"
-                          title="Dodaj komendę">＋</button>
-                        <button class="icon-btn danger"
-                          data-action="delete_device"
-                          data-mac="${remote.mac}"
-                          data-device="${dev.name}"
-                          title="Usuń urządzenie">🗑</button>
-                        <span style="color:var(--bl-text-muted);font-size:11px">${devOpen ? '▲' : '▼'}</span>
+                      <div style="display:flex;align-items:center;gap:8px">
+                        <div class="device-actions">
+                          <button class="icon-btn add"
+                            data-action="add_command"
+                            data-mac="${remote.mac}"
+                            data-device="${dev.name}"
+                            title="Dodaj komendę">＋</button>
+                          <button class="icon-btn danger"
+                            data-action="delete_device"
+                            data-mac="${remote.mac}"
+                            data-device="${dev.name}"
+                            title="Usuń urządzenie">🗑</button>
+                        </div>
+                        <span style="color:var(--bl-text-muted);font-size:11px;min-width:12px;text-align:center">${devOpen ? '▲' : '▼'}</span>
                       </div>
                     </div>
                     ${cmdsHtml}
@@ -552,4 +554,8 @@ window.customCards.push({
   type: 'broadlink-manager-card',
   name: 'BroadLink Manager',
   description: 'Zarządzaj i ucz komend IR/RF BroadLink',
+  version: '2.1.0',
 });
+
+// Wymuszenie odświeżenia cache przez wersję w konsoli
+console.info('%c BroadLink Manager Card v2.1.0 ', 'background:#00d4ff;color:#0f1117;font-weight:bold;border-radius:4px;padding:2px 6px');
