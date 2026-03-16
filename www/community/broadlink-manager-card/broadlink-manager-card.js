@@ -1,6 +1,7 @@
 /**
- * BroadLink Manager Card v2
+ * BroadLink Manager Card v2.1
  * Lovelace custom card — zarządzanie i uczenie komend IR/RF
+ * Build: 2026-03-16
  */
 
 const styles = `
@@ -33,7 +34,8 @@ const styles = `
   .remote-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; background: var(--bl-surface2); border-bottom: 1px solid transparent; transition: border-color 0.2s; }
   .remote-header:hover { border-bottom-color: var(--bl-border); }
   .remote-header.open { border-bottom: 1px solid var(--bl-border); }
-  .remote-mac { font-size: 11px; color: var(--bl-accent); letter-spacing: 1.5px; }
+  .remote-mac { font-size: 12px; font-weight: 600; color: var(--bl-accent); letter-spacing: 0.5px; }
+  .remote-mac-sub { font-size: 10px; color: var(--bl-text-muted); letter-spacing: 1px; margin-top: 1px; }
   .remote-stats { font-size: 10px; color: var(--bl-text-muted); margin-top: 2px; }
   .remote-right { display: flex; align-items: center; gap: 8px; }
   .add-device-btn { background: rgba(0,212,255,0.08); border: 1px solid rgba(0,212,255,0.3); color: var(--bl-accent); padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 11px; font-family: inherit; transition: all 0.2s; white-space: nowrap; }
@@ -198,6 +200,29 @@ class BroadlinkManagerCard extends HTMLElement {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  _getMacToNameMap() {
+    // Buduje mapę MAC → przyjazna nazwa pilota z encji remote.*
+    // HA BroadLink tworzy encje remote z MAC w entity_id lub unique_id
+    const map = {};
+    if (!this._hass) return map;
+
+    Object.keys(this._hass.states)
+      .filter(id => id.startsWith('remote.'))
+      .forEach(id => {
+        const state = this._hass.states[id];
+        const name = state.attributes.friendly_name || id;
+        // Szukaj MAC w entity_id (np. remote.broadlink_rm4_e87072abde0a)
+        const macMatch = id.match(/([0-9a-f]{12})/i);
+        if (macMatch) {
+          const raw = macMatch[1].toLowerCase();
+          // Zamień na format AA:BB:CC:DD:EE:FF
+          const mac = raw.match(/.{2}/g).join(':').toUpperCase();
+          map[mac] = name;
+        }
+      });
+    return map;
+  }
+
   _showToast(msg, type = '') {
     const toast = this.shadowRoot.querySelector('.toast');
     if (!toast) return;
@@ -314,9 +339,12 @@ class BroadlinkManagerCard extends HTMLElement {
     if (this._loading) return `<div class="loading"><span>Ładowanie danych...</span></div>`;
     if (!this._data.length) return `<div class="empty-state"><div class="icon">📡</div>Brak plików BroadLink w katalogu konfiguracji</div>`;
 
+    const macNameMap = this._getMacToNameMap();
+
     return this._data.map(remote => {
       const isOpen = this._openRemotes.has(remote.mac);
       const totalCmds = remote.devices.reduce((s, d) => s + d.command_count, 0);
+      const remoteName = macNameMap[remote.mac] || null;
 
       const devicesHtml = isOpen ? `
         <div class="devices-container">
@@ -382,7 +410,8 @@ class BroadlinkManagerCard extends HTMLElement {
         <div class="remote-block">
           <div class="remote-header ${isOpen ? 'open' : ''}" data-toggle-remote="${remote.mac}">
             <div>
-              <div class="remote-mac">📡 ${remote.mac}</div>
+              <div class="remote-mac">📡 ${remoteName || remote.mac}</div>
+              ${remoteName ? `<div class="remote-mac-sub">${remote.mac}</div>` : ''}
               <div class="remote-stats">${remote.device_count} urządzeń · ${totalCmds} komend</div>
             </div>
             <div class="remote-right">

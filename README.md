@@ -8,6 +8,7 @@ Integracja do zarządzania komendami IR/RF BroadLink bezpośrednio z poziomu Hom
 - 📡 **Uczenie nowych komend** IR/RF bezpośrednio z karty Lovelace
 - ✏️ Zmiana nazw komend i urządzeń
 - 🗑️ Usuwanie komend i całych urządzeń
+- 🔄 Automatyczna aktualizacja rejestru encji po każdej zmianie
 - 🃏 Dedykowana karta Lovelace z pełnym panelem zarządzania
 - 🔌 Serwisy HA do użycia w automatyzacjach
 
@@ -68,13 +69,15 @@ type: custom:broadlink-manager-card
 
 ## Karta Lovelace
 
-Karta oferuje pełny panel zarządzania komendami:
+Karta oferuje pełny panel zarządzania komendami. Zamiast surowych adresów MAC wyświetlane są przyjazne nazwy pilotów pobrane automatycznie z encji `remote.*` (np. "BroadLink Remote 1"). Adres MAC widoczny jest jako podtytuł.
+
+### Dostępne akcje
 
 - **＋ urządzenie** — dodaj nowe urządzenie do pilota (z uczeniem pierwszej komendy)
 - **＋** przy urządzeniu — dodaj nową komendę do istniejącego urządzenia
 - **＋ nowa komenda** — kafelek na końcu listy komend (po rozwinięciu urządzenia)
 - Kliknięcie w nazwę urządzenia lub komendy — zmiana nazwy
-- 🗑 — usunięcie urządzenia lub komendy
+- 🗑 — usunięcie urządzenia lub komendy (z potwierdzeniem)
 
 ### Uczenie nowych komend
 
@@ -85,6 +88,14 @@ Karta oferuje pełny panel zarządzania komendami:
 5. Naciśnij przycisk na fizycznym pilocie IR
 6. Po zapisaniu pole komendy się czyści — możesz od razu uczyć kolejną
 
+### Aktualizacja pliku JS
+
+Plik karty nie aktualizuje się automatycznie z repozytorium. Po każdej aktualizacji należy ręcznie nadpisać plik w:
+```
+/config/www/community/broadlink-manager-card/broadlink-manager-card.js
+```
+i wykonać twardy odśwież przeglądarki (Ctrl+Shift+R).
+
 ---
 
 ## Encje HA
@@ -92,8 +103,8 @@ Karta oferuje pełny panel zarządzania komendami:
 Każda nauczona komenda staje się encją `button` w HA, pogrupowaną w urządzenia:
 
 ```
-BroadLink Remote E8:70:72:DE:C2:44   ← urządzenie (fizyczny pilot)
-└── TV                                ← urządzenie podrzędne
+BroadLink Remote 1                    ← przyjazna nazwa pilota
+└── Telewizor                         ← urządzenie podrzędne
     ├── button.power
     ├── button.volume_up
     └── button.mute
@@ -102,6 +113,8 @@ BroadLink Remote E8:70:72:DE:C2:44   ← urządzenie (fizyczny pilot)
 ```
 
 Naciśnięcie przycisku wysyła komendę przez serwis `remote.send_command`.
+
+Po zmianie nazwy urządzenia lub komendy rejestr HA jest automatycznie aktualizowany — stare encje są usuwane i tworzone na nowo pod nową nazwą.
 
 ---
 
@@ -115,7 +128,7 @@ Zwraca listę wszystkich pilotów, urządzeń i komend. Obsługuje `return_respo
 service: broadlink_manager.delete_command
 data:
   mac: "AA:BB:CC:DD:EE:FF"
-  device: "TV"
+  device: "Telewizor"
   command: "power"
 ```
 
@@ -124,7 +137,7 @@ data:
 service: broadlink_manager.rename_command
 data:
   mac: "AA:BB:CC:DD:EE:FF"
-  device: "TV"
+  device: "Telewizor"
   command: "vol_up"
   new_name: "volume_up"
 ```
@@ -134,8 +147,8 @@ data:
 service: broadlink_manager.rename_device
 data:
   mac: "AA:BB:CC:DD:EE:FF"
-  device: "Samsung"
-  new_name: "TV Samsung"
+  device: "TV"
+  new_name: "Telewizor"
 ```
 
 ### `broadlink_manager.delete_device`
@@ -170,7 +183,7 @@ Integracja odczytuje pliki z `/config/.storage/` o wzorcu `broadlink_remote_*_co
   "minor_version": 1,
   "key": "broadlink_remote_e87072dec244_codes",
   "data": {
-    "TV": {
+    "Telewizor": {
       "power": "JgBYAAAB...",
       "volume_up": "JgBYAAAB..."
     },
@@ -182,3 +195,11 @@ Integracja odczytuje pliki z `/config/.storage/` o wzorcu `broadlink_remote_*_co
 ```
 
 Pliki `*_flags` są pomijane — integracja czyta wyłącznie pliki `*_codes`.
+
+---
+
+## Znane ograniczenia
+
+- Karta Lovelace wymaga ręcznej aktualizacji pliku JS po każdej nowej wersji
+- Nazwy urządzeń i komend mogą zawierać tylko litery, cyfry, spacje, myślniki i podkreślenia
+- Po zmianie nazwy urządzenia integracja wykonuje automatyczny reload — przez chwilę encje mogą być niedostępne
