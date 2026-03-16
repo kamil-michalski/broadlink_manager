@@ -9,9 +9,24 @@ from .const import BROADLINK_FILE_PATTERN
 
 _LOGGER = logging.getLogger(__name__)
 
+# Dozwolone znaki w nazwach urządzeń i komend
+_VALID_NAME_RE = re.compile(r'^[a-zA-Z0-9_\- ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]+$')
+_MAX_NAME_LEN = 64
+
+
+def validate_name(name: str, label: str = "Nazwa") -> str | None:
+    """Sprawdź czy nazwa jest bezpieczna. Zwraca komunikat błędu lub None."""
+    if not name or not name.strip():
+        return f"{label} nie może być pusta"
+    if len(name) > _MAX_NAME_LEN:
+        return f"{label} nie może przekraczać {_MAX_NAME_LEN} znaków"
+    if not _VALID_NAME_RE.match(name):
+        return f"{label} zawiera niedozwolone znaki (dozwolone: litery, cyfry, _ - spacja)"
+    return None
+
 
 def get_broadlink_files(config_path: str) -> list[str]:
-    """Return list of BroadLink codes JSON files."""
+    """Return list of BroadLink codes files."""
     pattern = os.path.join(config_path, BROADLINK_FILE_PATTERN)
     return sorted(glob.glob(pattern))
 
@@ -57,6 +72,8 @@ def write_codes(filepath: str, codes: dict) -> bool:
 
     Zachowujemy wszystkie metadane HA Storage (version, minor_version, key)
     i nadpisujemy tylko klucz "data".
+    Zapis atomowy przez plik tymczasowy — zapobiega uszkodzeniu pliku
+    przy równoczesnych zapisach.
     """
     try:
         try:
@@ -71,11 +88,21 @@ def write_codes(filepath: str, codes: dict) -> bool:
         else:
             payload = codes
 
-        with open(filepath, "w", encoding="utf-8") as f:
+        # Atomowy zapis: najpierw plik tymczasowy, potem rename
+        tmp_path = filepath + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=2, ensure_ascii=False)
+        os.replace(tmp_path, filepath)
         return True
     except OSError as err:
         _LOGGER.error("Cannot write BroadLink codes to %s: %s", filepath, err)
+        # Posprzątaj plik tymczasowy jeśli pozostał
+        tmp_path = filepath + ".tmp"
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
         return False
 
 
@@ -109,7 +136,6 @@ def delete_command(config_path: str, mac: str, device: str, command: str) -> boo
             codes = read_codes(filepath)
             if device in codes and command in codes[device]:
                 del codes[device][command]
-                # Remove device if empty
                 if not codes[device]:
                     del codes[device]
                 return write_codes(filepath, codes)
@@ -121,10 +147,18 @@ def rename_command(
     config_path: str, mac: str, device: str, old_name: str, new_name: str
 ) -> bool:
     """Rename a command."""
+    err = validate_name(new_name, "Nazwa komendy")
+    if err:
+        _LOGGER.error("rename_command: %s", err)
+        return False
+    new_name = new_name.strip()
     for filepath in get_broadlink_files(config_path):
         if mac_from_filename(filepath) == mac.upper():
             codes = read_codes(filepath)
             if device in codes and old_name in codes[device]:
+                if new_name in codes[device]:
+                    _LOGGER.error("rename_command: komenda '%s' już istnieje w '%s'", new_name, device)
+                    return False
                 codes[device][new_name] = codes[device].pop(old_name)
                 return write_codes(filepath, codes)
     _LOGGER.warning("Command %s/%s not found for MAC %s", device, old_name, mac)
@@ -133,10 +167,18 @@ def rename_command(
 
 def rename_device(config_path: str, mac: str, old_name: str, new_name: str) -> bool:
     """Rename a device group."""
+    err = validate_name(new_name, "Nazwa urządzenia")
+    if err:
+        _LOGGER.error("rename_device: %s", err)
+        return False
+    new_name = new_name.strip()
     for filepath in get_broadlink_files(config_path):
         if mac_from_filename(filepath) == mac.upper():
             codes = read_codes(filepath)
             if old_name in codes:
+                if new_name in codes:
+                    _LOGGER.error("rename_device: urządzenie '%s' już istnieje", new_name)
+                    return False
                 codes[new_name] = codes.pop(old_name)
                 return write_codes(filepath, codes)
     return False

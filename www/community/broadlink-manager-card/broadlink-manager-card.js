@@ -124,6 +124,9 @@ class BroadlinkManagerCard extends HTMLElement {
     if (!this._hass) return;
     this._loading = true;
     this._render();
+
+    // Próba 1: return_response (HA 2023.4+)
+    // Struktura odpowiedzi WebSocket: { result: { response: { devices: [...] } } }
     try {
       const response = await this._hass.connection.sendMessagePromise({
         type: "call_service",
@@ -132,9 +135,44 @@ class BroadlinkManagerCard extends HTMLElement {
         service_data: {},
         return_response: true,
       });
-      this._data = response?.response?.devices || [];
+      // Sprawdzamy obie możliwe struktury odpowiedzi
+      const devices =
+        response?.response?.devices ||      // starsza struktura
+        response?.result?.response?.devices; // nowsza struktura WebSocket
+      if (Array.isArray(devices)) {
+        this._data = devices;
+        this._loading = false;
+        this._render();
+        return;
+      }
+      console.warn('BroadLink Manager: return_response OK but no devices array, raw:', JSON.stringify(response));
     } catch (e) {
-      console.error('BroadLink Manager: failed to load', e);
+      console.warn('BroadLink Manager: return_response failed, trying event fallback:', e.message);
+    }
+
+    // Próba 2: serwis + nasłuch na zdarzenie (stary HA)
+    try {
+      this._data = await new Promise((resolve) => {
+        const timer = setTimeout(() => {
+          unsub && unsub();
+          resolve([]);
+        }, 8000);
+
+        let unsub = null;
+        this._hass.connection.subscribeEvents((event) => {
+          if (event.event_type === 'broadlink_manager_devices_listed') {
+            clearTimeout(timer);
+            unsub && unsub();
+            resolve(event.data.devices || []);
+          }
+        }).then((fn) => {
+          unsub = fn;
+          this._hass.callService('broadlink_manager', 'list_devices', {})
+            .catch(() => { clearTimeout(timer); unsub && unsub(); resolve([]); });
+        }).catch(() => { clearTimeout(timer); resolve([]); });
+      });
+    } catch (e) {
+      console.error('BroadLink Manager: both load methods failed', e);
       this._data = [];
     } finally {
       this._loading = false;
@@ -513,5 +551,5 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: 'broadlink-manager-card',
   name: 'BroadLink Manager',
-  description: 'Zarządzaj komendami IR/RF BroadLink',
+  description: 'Zarządzaj i ucz komend IR/RF BroadLink',
 });
