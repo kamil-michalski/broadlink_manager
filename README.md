@@ -1,6 +1,6 @@
 # BroadLink Manager — Custom Component dla Home Assistant
 
-Integracja do zarządzania nauczanymi komendami IR/RF BroadLink bezpośrednio z poziomu Home Assistant.
+Integracja do zarządzania komendami IR/RF BroadLink bezpośrednio z poziomu Home Assistant.
 
 ## Funkcje
 
