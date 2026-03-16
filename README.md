@@ -1,46 +1,54 @@
 # BroadLink Manager — Custom Component dla Home Assistant
 
-Integracja do zarządzania nauczanymi komendami IR/RF z plików BroadLink (`broadlink_remote_*_codes.json`).
+Integracja do zarządzania komendami IR/RF BroadLink bezpośrednio z poziomu Home Assistant.
 
 ## Funkcje
 
-- 📋 Listowanie wszystkich pilotów BroadLink i ich urządzeń
-- ✏️ Zmiana nazw komend i urządzeń (kliknij na nazwę)
+- 📋 Listowanie wszystkich pilotów BroadLink, urządzeń i komend jako encje HA
+- 📡 **Uczenie nowych komend** IR/RF bezpośrednio z karty Lovelace
+- ✏️ Zmiana nazw komend i urządzeń
 - 🗑️ Usuwanie komend i całych urządzeń
-- 🃏 Panel Lovelace z podglądem wszystkich danych
-- 🔌 Serwisy HA do integracji z automatyzacjami
+- 🃏 Dedykowana karta Lovelace z pełnym panelem zarządzania
+- 🔌 Serwisy HA do użycia w automatyzacjach
 
 ---
 
 ## Instalacja
 
-### 1. Skopiuj pliki
+### 1. Skopiuj pliki integracji
 
 ```
 /config/
-├── .storage/              ← tutaj są pliki BroadLink
+├── .storage/                          ← tutaj HA przechowuje komendy BroadLink
 ├── custom_components/
 │   └── broadlink_manager/
 │       ├── __init__.py
+│       ├── button.py
 │       ├── config_flow.py
 │       ├── const.py
 │       ├── manifest.json
 │       ├── store.py
-│       └── strings.json
+│       ├── strings.json
+│       └── brand/
+│           ├── icon.png
+│           └── logo.png
 └── www/
-    └── broadlink-manager-card.js
+    └── community/
+        └── broadlink-manager-card/
+            └── broadlink-manager-card.js
 ```
 
-### 2. Dodaj kartę Lovelace
+### 2. Dodaj zasób Lovelace
 
-W `configuration.yaml` lub przez UI (Ustawienia → Pulpity → Zasoby):
+Przez UI: **Ustawienia → Pulpity nawigacyjne → ⋮ → Zasoby → Dodaj zasób**
 
-```yaml
-lovelace:
-  resources:
-    - url: /local/broadlink-manager-card.js
-      type: module
 ```
+URL:  /hacsfiles/broadlink-manager-card/broadlink-manager-card.js
+Typ:  Moduł JavaScript
+```
+
+> **Uwaga:** Ścieżka `/hacsfiles/` działa gdy plik jest w `www/community/`.
+> Jeśli umieścisz plik bezpośrednio w `www/`, użyj `/local/broadlink-manager-card.js`.
 
 ### 3. Dodaj integrację
 
@@ -50,16 +58,57 @@ Podaj ścieżkę do katalogu `.storage` (domyślnie `/config/.storage`).
 
 ### 4. Dodaj kartę do dashboardu
 
+Edytuj dashboard → Dodaj kartę → ręcznie przez YAML:
+
 ```yaml
 type: custom:broadlink-manager-card
 ```
 
 ---
 
+## Karta Lovelace
+
+Karta oferuje pełny panel zarządzania komendami:
+
+- **＋ urządzenie** — dodaj nowe urządzenie do pilota (z uczeniem pierwszej komendy)
+- **＋** przy urządzeniu — dodaj nową komendę do istniejącego urządzenia
+- **＋ nowa komenda** — kafelek na końcu listy komend (po rozwinięciu urządzenia)
+- Kliknięcie w nazwę urządzenia lub komendy — zmiana nazwy
+- 🗑 — usunięcie urządzenia lub komendy
+
+### Uczenie nowych komend
+
+1. Kliknij **＋ urządzenie** lub **＋** przy urządzeniu
+2. Wybierz pilota BroadLink z listy (`remote.*`)
+3. Wpisz nazwę urządzenia (przy nowym) i nazwę komendy
+4. Kliknij **📡 UCZE**
+5. Naciśnij przycisk na fizycznym pilocie IR
+6. Po zapisaniu pole komendy się czyści — możesz od razu uczyć kolejną
+
+---
+
+## Encje HA
+
+Każda nauczona komenda staje się encją `button` w HA, pogrupowaną w urządzenia:
+
+```
+BroadLink Remote E8:70:72:DE:C2:44   ← urządzenie (fizyczny pilot)
+└── TV                                ← urządzenie podrzędne
+    ├── button.power
+    ├── button.volume_up
+    └── button.mute
+└── Klimatyzacja
+    └── button.on_cool_22
+```
+
+Naciśnięcie przycisku wysyła komendę przez serwis `remote.send_command`.
+
+---
+
 ## Dostępne serwisy HA
 
 ### `broadlink_manager.list_devices`
-Wylistuje wszystkie urządzenia. Wynik emitowany jako zdarzenie `broadlink_manager_devices_listed`.
+Zwraca listę wszystkich pilotów, urządzeń i komend. Obsługuje `return_response`.
 
 ### `broadlink_manager.delete_command`
 ```yaml
@@ -111,19 +160,25 @@ data:
 
 ---
 
-## Struktura danych
+## Format plików
 
-Integracja odczytuje pliki w formacie:
+Integracja odczytuje pliki z `/config/.storage/` o wzorcu `broadlink_remote_*_codes`:
+
 ```json
 {
-  "TV": {
-    "power": "JgBGAAABKZMU...",
-    "volume_up": "JgBGAAABKZMU..."
-  },
-  "Klimatyzacja": {
-    "on_cool_22": "JgBGAAABKZMU..."
+  "version": 1,
+  "minor_version": 1,
+  "key": "broadlink_remote_e87072dec244_codes",
+  "data": {
+    "TV": {
+      "power": "JgBYAAAB...",
+      "volume_up": "JgBYAAAB..."
+    },
+    "Klimatyzacja": {
+      "on_cool_22": "JgBYAAAB..."
+    }
   }
 }
 ```
 
-Plik: `/config/.storage/broadlink_remote_aabbccddeeff_codes`
+Pliki `*_flags` są pomijane — integracja czyta wyłącznie pliki `*_codes`.
