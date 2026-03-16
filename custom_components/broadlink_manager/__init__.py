@@ -3,7 +3,7 @@ import logging
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 import homeassistant.helpers.config_validation as cv
 
 from .const import (
@@ -30,13 +30,20 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {"config_path": config_path}
 
-    # --- Service: list_devices ---
-    async def handle_list_devices(call: ServiceCall):
+    # --- Service: list_devices (zwraca dane bezpośrednio jako response) ---
+    async def handle_list_devices(call: ServiceCall) -> dict:
         devices = await hass.async_add_executor_job(store.list_devices, config_path)
-        hass.bus.async_fire(f"{DOMAIN}_devices_listed", {"devices": devices})
         _LOGGER.info("BroadLink devices listed: %s remotes found", len(devices))
+        # Emituj zdarzenie (dla kompatybilności wstecznej z kartą)
+        hass.bus.async_fire(f"{DOMAIN}_devices_listed", {"devices": devices})
+        return {"devices": devices}
 
-    hass.services.async_register(DOMAIN, "list_devices", handle_list_devices)
+    hass.services.async_register(
+        DOMAIN,
+        "list_devices",
+        handle_list_devices,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
 
     # --- Service: delete_command ---
     delete_command_schema = vol.Schema(
